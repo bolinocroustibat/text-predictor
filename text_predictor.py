@@ -1,6 +1,7 @@
 import tensorflow as tf
 from data_provider import DataProvider
 from rnn_model import RNNModel
+import datetime
 import sys
 import matplotlib
 import numpy as np
@@ -22,7 +23,8 @@ else:
 data_dir = './data/' + dataset
 tensorboard_dir = data_dir + '/tensorboard/' + str(time.strftime('%Y-%m-%d_%H-%M-%S'))
 input_file = data_dir + '/input.txt'
-output_file = data_dir + '/output.txt'
+now = datetime.datetime.now()
+output_file = data_dir + '/output_{}-{}-{}_{}-{}.txt'.format(now.year, now.month, now.day, now.hour, now.minute)
 output = open(output_file, 'w')
 output.close()
 
