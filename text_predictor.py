@@ -1,34 +1,33 @@
-import tensorflow as tf
-from data_provider import DataProvider
-from rnn_model import RNNModel
-import datetime
 import sys
+import time
+
 import matplotlib
 import numpy as np
-import time
-import matplotlib.pyplot as plt
+import tensorflow as tf
+
+from data_provider import DataProvider
+from rnn_model import RNNModel
 
 matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 # Args
 if len(sys.argv) != 2:
     print("Please select a dataset.")
     print("Usage: python text_predictor.py <dataset>")
-    print("Available datasets: stupeflip.")
+    print(
+        "Available datasets: kanye, shakespeare, wikipedia, reuters, hackernews, war_and_peace, sherlock"
+    )
     exit(1)
 else:
     dataset = sys.argv[1]
 
 # I/O
-data_dir: str = "./data/" + dataset
-tensorboard_dir: str = data_dir + "/tensorboard/" + str(
-    time.strftime("%Y-%m-%d_%H-%M-%S")
-)
-input_file: str = data_dir + "/input.txt"
-output_file: str = "{data_dir}/output_{dt.year}-{dt.month}-{dt.day}_{dt.hour}-{dt.minute}.txt".format(
-    dt=datetime.datetime.now()
-)
-output = open(output_file, "w")
+data_dir = "./data/" + dataset
+tensorboard_dir = data_dir + "/tensorboard/" + str(time.strftime("%Y-%m-%d_%H-%M-%S"))
+input_filepath = data_dir + "/input.txt"
+output_filepath = data_dir + "/output.txt"
+output = open(output_filepath, "w")
 output.close()
 
 # Hyperparams
@@ -67,7 +66,7 @@ def rnn():
 
         while True:
             sess.run(
-                tf.assign(model.learning_rate, LEARNING_RATE * (DECAY_RATE ** epoch))
+                tf.assign(model.learning_rate, LEARNING_RATE * (DECAY_RATE**epoch))
             )
             data_provider.reset_batch_pointer()
             state = sess.run(model.initial_state)
@@ -92,9 +91,9 @@ def rnn():
                     smooth_losses.append(smooth_loss)
                     temp_losses = []
                     plot(smooth_losses, "iterations (thousands)", "loss")
-                    print(f"metric: iteration, value: {iteration}")
-                    print(f"metric: epoch, value: {epoch}")
-                    print(f"metric: loss, value: {smooth_loss}")
+                    print('{{"metric": "iteration", "value": {}}}'.format(iteration))
+                    print('{{"metric": "epoch", "value": {}}}'.format(epoch))
+                    print('{{"metric": "loss", "value": {}}}'.format(smooth_loss))
             epoch += 1
 
 
@@ -110,8 +109,11 @@ def sample_text(sess, data_provider, iteration):
     text = model.sample(
         sess, data_provider.chars, data_provider.vocabulary, TEXT_SAMPLE_LENGTH
     ).encode("utf-8")
-    with open(output_file, "a") as output:
-        output.write(f"Iteration: {iteration}\n{text}\n\n")
+    output = open(output_filepath, "a")
+    output.write("Iteration: " + str(iteration) + "\n")
+    output.write(text + "\n")
+    output.write("\n")
+    output.close()
 
 
 def plot(data, x_label, y_label):
@@ -124,11 +126,11 @@ def plot(data, x_label, y_label):
 
 
 if __name__ == "__main__":
-    print(f"Selected dataset: {dataset}")
-    print(f"Batch size: {BATCH_SIZE}")
-    print(f"Sequence length: {SEQUENCE_LENGTH}")
-    print(f"Learning rate: {LEARNING_RATE}")
-    print(f"Decay rate: f{DECAY_RATE}")
-    print(f"Hidden layer size: {HIDDEN_LAYER_SIZE}")
-    print(f"Cells size: {CELLS_SIZE}")
+    print(f"Selected dataset: {str(dataset)}")
+    print(f"Batch size: {str(BATCH_SIZE)}")
+    print(f"Sequence length: {str(SEQUENCE_LENGTH)}")
+    print(f"Learning rate: {str(LEARNING_RATE)}")
+    print(f"Decay rate: {str(DECAY_RATE)}")
+    print(f"Hidden layer size: {str(HIDDEN_LAYER_SIZE)}")
+    print(f"Cells size: {str(CELLS_SIZE)}")
     rnn()
