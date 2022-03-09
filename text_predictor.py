@@ -1,136 +1,228 @@
-import sys
-import time
+import json
+import random
+from typing import Generator, Tuple
 
-import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+import typer
+import unidecode
 
-from data_provider import DataProvider
-from rnn_model import RNNModel
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-# Args
-if len(sys.argv) != 2:
-    print("Please select a dataset.")
-    print("Usage: python text_predictor.py <dataset>")
-    print(
-        "Available datasets: kanye, shakespeare, wikipedia, reuters, hackernews, war_and_peace, sherlock"
-    )
-    exit(1)
-else:
-    dataset = sys.argv[1]
-
-# I/O
-data_dir = "./data/" + dataset
-tensorboard_dir = data_dir + "/tensorboard/" + str(time.strftime("%Y-%m-%d_%H-%M-%S"))
-input_filepath = data_dir + "/input.txt"
-output_filepath = data_dir + "/output.txt"
-output = open(output_filepath, "w")
-output.close()
-
-# Hyperparams
-BATCH_SIZE = 32
-SEQUENCE_LENGTH = 25
-LEARNING_RATE = 0.01
-DECAY_RATE = 0.97
-HIDDEN_LAYER_SIZE = 256
-CELLS_SIZE = 2
-
-TEXT_SAMPLE_LENGTH = 500
-SAMPLING_FREQUENCY = 1000
-LOGGING_FREQUENCY = 1000
+from config import DATA_DIR
+from helpers import CustomLogger
 
 
-def rnn():
-    data_provider = DataProvider(data_dir, BATCH_SIZE, SEQUENCE_LENGTH)
-    model = RNNModel(
-        data_provider.vocabulary_size,
-        batch_size=BATCH_SIZE,
-        sequence_length=SEQUENCE_LENGTH,
-        hidden_layer_size=HIDDEN_LAYER_SIZE,
-        cells_size=CELLS_SIZE,
-    )
+logger = CustomLogger()
 
-    with tf.Session() as sess:
+# Load text data
+with open(f"data/{DATA_DIR}/input.txt", "r") as f:
+    text: str = f.read()
+text = unidecode.unidecode(text)
+text = text.lower()
+# logger.debug(text[:500])
 
-        summaries = tf.summary.merge_all()
-        writer = tf.summary.FileWriter(tensorboard_dir)
-        writer.add_graph(sess.graph)
-        sess.run(tf.global_variables_initializer())
+# Map each char to int
+vocab = set(text)
+vocab_size: int = len(vocab)
+vocab_to_int: dict = {l: i for i, l in enumerate(vocab)}
+int_to_vocab: dict = {i: l for i, l in enumerate(vocab)}
 
-        epoch = 0
-        temp_losses = []
-        smooth_losses = []
-
-        while True:
-            sess.run(
-                tf.assign(model.learning_rate, LEARNING_RATE * (DECAY_RATE**epoch))
-            )
-            data_provider.reset_batch_pointer()
-            state = sess.run(model.initial_state)
-            for batch in range(data_provider.batches_size):
-                inputs, targets = data_provider.next_batch()
-                feed = {model.input_data: inputs, model.targets: targets}
-                for index, (c, h) in enumerate(model.initial_state):
-                    feed[c] = state[index].c
-                    feed[h] = state[index].h
-                iteration = epoch * data_provider.batches_size + batch
-                summary, loss, state, _ = sess.run(
-                    [summaries, model.cost, model.final_state, model.train_op], feed
-                )
-                writer.add_summary(summary, iteration)
-                temp_losses.append(loss)
-
-                if iteration % SAMPLING_FREQUENCY == 0:
-                    sample_text(sess, data_provider, iteration)
-
-                if iteration % LOGGING_FREQUENCY == 0:
-                    smooth_loss = np.mean(temp_losses)
-                    smooth_losses.append(smooth_loss)
-                    temp_losses = []
-                    plot(smooth_losses, "iterations (thousands)", "loss")
-                    print('{{"metric": "iteration", "value": {}}}'.format(iteration))
-                    print('{{"metric": "epoch", "value": {}}}'.format(epoch))
-                    print('{{"metric": "loss", "value": {}}}'.format(smooth_loss))
-            epoch += 1
+# Text vectorization
+encoded: list = [vocab_to_int[l] for l in text]
+inputs, targets = encoded, encoded[1:]
 
 
-def sample_text(sess, data_provider, iteration):
-    model = RNNModel(
-        data_provider.vocabulary_size,
-        batch_size=1,
-        sequence_length=1,
-        hidden_layer_size=HIDDEN_LAYER_SIZE,
-        cells_size=CELLS_SIZE,
-        training=False,
-    )
-    text = model.sample(
-        sess, data_provider.chars, data_provider.vocabulary, TEXT_SAMPLE_LENGTH
-    ).encode("utf-8")
-    output = open(output_filepath, "a")
-    output.write("Iteration: " + str(iteration) + "\n")
-    output.write(text + "\n")
-    output.write("\n")
-    output.close()
+def generate_batches(
+    inputs: list, targets: list, seq_len: int, batch_size: int, noise=0
+) -> Tuple[Generator, Generator]:
+    # Size of each chunk
+    chunk_size: int = (len(inputs) - 1) // batch_size
+    # Number of sequence per chunk
+    sequences_per_chunk: int = chunk_size // seq_len
+
+    for s in range(0, sequences_per_chunk):
+        batch_inputs = np.zeros((batch_size, seq_len))
+        batch_targets = np.zeros((batch_size, seq_len))
+        for b in range(0, batch_size):
+            fr = (b * chunk_size) + (s * seq_len)
+            to = fr + seq_len
+            batch_inputs[b] = inputs[fr:to]
+            batch_targets[b] = inputs[fr + 1 : to + 1]
+
+            if noise > 0:
+                noise_indices = np.random.choice(seq_len, size=noise)
+                batch_inputs[b][noise_indices] = np.random.randint(0, vocab_size)
+
+        yield batch_inputs, batch_targets
 
 
-def plot(data, x_label, y_label):
-    plt.plot(range(len(data)), data)
-    plt.title(dataset)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.savefig(data_dir + "/" + y_label + ".png", bbox_inches="tight")
-    plt.close()
+# for batch_inputs, batch_targets in generate_batches(inputs, targets, 5, 32, noise=0):
+#     logger.info(batch_inputs[0], batch_targets[0])
+#     break
+
+# for batch_inputs, batch_targets in generate_batches(inputs, targets, 5, 32, noise=3):
+#     logger.info(batch_inputs[0], batch_targets[0])
+#     break
 
 
-if __name__ == "__main__":
-    print(f"Selected dataset: {str(dataset)}")
-    print(f"Batch size: {str(BATCH_SIZE)}")
-    print(f"Sequence length: {str(SEQUENCE_LENGTH)}")
-    print(f"Learning rate: {str(LEARNING_RATE)}")
-    print(f"Decay rate: {str(DECAY_RATE)}")
-    print(f"Hidden layer size: {str(HIDDEN_LAYER_SIZE)}")
-    print(f"Cells size: {str(CELLS_SIZE)}")
-    rnn()
+class OneHot(tf.keras.layers.Layer):
+    def __init__(self, depth, **kwargs):
+        super(OneHot, self).__init__(**kwargs)
+        self.depth = depth
+
+    def call(self, x, mask=None):
+        return tf.one_hot(tf.cast(x, tf.int32), self.depth)
+
+
+class RnnModel(tf.keras.Model):
+    def __init__(self, vocab_size):
+        super(RnnModel, self).__init__()
+        # Convolutions
+        self.one_hot = OneHot(vocab_size)
+
+    def call(self, inputs):
+        output = self.one_hot(inputs)
+        return output
+
+
+batch_inputs, batch_targets = next(
+    generate_batches(inputs=inputs, targets=targets, seq_len=50, batch_size=32)
+)
+
+model = RnnModel(vocab_size)
+output = model.predict(batch_inputs)
+
+logger.debug(f"Shape of the output of the model: {output.shape}")
+
+# logger.debug(output)
+
+logger.debug("Input letter is: {} ({})".format(batch_inputs[0][0], int_to_vocab[batch_inputs[0][0]]))
+logger.debug("One hot representation of the letter: {}".format(output[0][0]))
+
+# assert(output[int(batch_inputs[0][0])]==1)
+
+
+### Set up the models, create the layers
+
+# Set the input of the model
+tf_inputs = tf.keras.Input(shape=(None,), batch_size=64)
+# Convert each value of the  input into a one encoding vector
+one_hot = OneHot(vocab_size)(tf_inputs)
+# Stack LSTM cells
+# rnn_layer1 = tf.keras.layers.LSTM(128, return_sequences=True, stateful=True)(one_hot)
+# rnn_layer2 = tf.keras.layers.LSTM(128, return_sequences=True, stateful=True)(rnn_layer1)
+# Create the outputs of the model
+hidden_layer = tf.keras.layers.Dense(128, activation="relu")(one_hot)
+outputs = tf.keras.layers.Dense(vocab_size, activation="softmax")(hidden_layer)
+
+### Setup the model
+model = tf.keras.Model(inputs=tf_inputs, outputs=outputs)
+
+
+# Start by resetting the cells of the RNN
+model.reset_states()
+
+# Get one batch
+batch_inputs, batch_targets = next(
+    generate_batches(inputs=inputs, targets=targets, seq_len=50, batch_size=64)
+)
+# logger.debug(f"Shape of the inputs: {batch_inputs.shape}")
+
+# Make a first prediction
+outputs = model.predict(batch_inputs)
+first_prediction = outputs[0][0]
+
+# Reset the states of the RNN states
+model.reset_states()
+
+# Make an other prediction to check the difference
+outputs = model.predict(batch_inputs)
+second_prediction = outputs[0][0]
+
+# Check if both prediction are equal
+assert set(first_prediction) == set(second_prediction)
+
+
+# Set the loss and objective
+loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+
+# Set some metrics to track the progress of the training
+## Loss
+train_loss = tf.keras.metrics.Mean(name="train_loss")
+## Accuracy
+train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy")
+
+# Set the train method and the predict method in graph mode
+@tf.function
+def train_step(inputs, targets):
+    with tf.GradientTape() as tape:
+        # Make a prediction on all the batches
+        predictions = model(inputs)
+        # Get the error/loss on these predictions
+        loss = loss_object(targets, predictions)
+    # Compute the gradient which respect to the loss
+    gradients = tape.gradient(loss, model.trainable_variables)
+    # Change the weights of the model
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    # The metrics are accumulate over time. You don't need to average it yourself.
+    train_loss(loss)
+    train_accuracy(targets, predictions)
+
+@tf.function
+def predict(inputs):
+    # Make a prediction on all the batch
+    predictions = model(inputs)
+    return predictions
+
+
+# Train the model
+
+model.reset_states()
+
+for epoch in range(4000):
+    for batch_inputs, batch_targets in generate_batches(
+        inputs=inputs, targets=targets, seq_len=50, batch_size=64, noise=13
+    ):
+        train_step(batch_inputs, batch_targets)
+    template = "\r Epoch {}, Train Loss: {}, Train Accuracy: {}"
+    print(template.format(epoch, train_loss.result(), train_accuracy.result()*100), end="")
+    model.reset_states()
+
+
+# Save the model
+
+model.save("model_rnn.h5")
+
+with open(f"data/{DATA_DIR}/model_rnn_vocab_to_int", "w") as f:
+    f.write(json.dumps(vocab_to_int))
+with open(f"data/{DATA_DIR}/model_rnn_int_to_vocab", "w") as f:
+    f.write(json.dumps(int_to_vocab))
+
+
+# Generate some text
+model.reset_states()
+
+size_poetries = 300
+
+poetries = np.zeros((64, size_poetries, 1))
+sequences = np.zeros((64, 100))
+for b in range(64):
+    rd = np.random.randint(0, len(inputs) - 100)
+    sequences[b] = inputs[rd : rd + 100]
+
+for i in range(size_poetries + 1):
+    if i > 0:
+        poetries[:, i - 1, :] = sequences
+    softmax = predict(sequences)
+    # Set the next sequences
+    sequences = np.zeros((64, 1))
+    for b in range(64):
+        argsort = np.argsort(softmax[b][0])
+        argsort = argsort[::-1]
+        # Select one of the strongest 4 proposals
+        sequences[b] = argsort[0]
+
+for b in range(64):
+    sentence = "".join([int_to_vocab[i[0]] for i in poetries[b]])
+    logger.success(sentence)
