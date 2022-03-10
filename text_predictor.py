@@ -6,18 +6,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import typer
-import unidecode
 
 from config import DATA_DIR
 from helpers import CustomLogger
-
 
 logger = CustomLogger()
 
 # Load text data
 with open(f"data/{DATA_DIR}/input.txt", "r") as f:
     text: str = f.read()
-text = unidecode.unidecode(text)
 text = text.lower()
 # logger.debug(text[:500])
 
@@ -96,7 +93,11 @@ logger.debug(f"Shape of the output of the model: {output.shape}")
 
 # logger.debug(output)
 
-logger.debug("Input letter is: {} ({})".format(batch_inputs[0][0], int_to_vocab[batch_inputs[0][0]]))
+logger.debug(
+    "Input letter is: {} ({})".format(
+        batch_inputs[0][0], int_to_vocab[batch_inputs[0][0]]
+    )
+)
 logger.debug("One hot representation of the letter: {}".format(output[0][0]))
 
 # assert(output[int(batch_inputs[0][0])]==1)
@@ -169,6 +170,7 @@ def train_step(inputs, targets):
     train_loss(loss)
     train_accuracy(targets, predictions)
 
+
 @tf.function
 def predict(inputs):
     # Make a prediction on all the batch
@@ -186,7 +188,10 @@ for epoch in range(4000):
     ):
         train_step(batch_inputs, batch_targets)
     template = "\r Epoch {}, Train Loss: {}, Train Accuracy: {}"
-    print(template.format(epoch, train_loss.result(), train_accuracy.result()*100), end="")
+    print(
+        template.format(epoch, train_loss.result(), train_accuracy.result() * 100),
+        end="",
+    )
     model.reset_states()
 
 

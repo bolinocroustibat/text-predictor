@@ -9,7 +9,6 @@ python = "~3.9"
 numpy = "^1.22.2"
 matplotlib = "^3.5.1"
 tensorflow = "^2.8.0"
-Unidecode = "^1.3.3"
 typer = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
