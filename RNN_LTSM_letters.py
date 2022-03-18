@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import typer
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM
 
 from config import DATA_DIR
 from helpers import CustomLogger
@@ -110,11 +112,11 @@ tf_inputs = tf.keras.Input(shape=(None,), batch_size=64)
 # Convert each value of the  input into a one encoding vector
 one_hot = OneHot(vocab_size)(tf_inputs)
 # Stack LSTM cells
-# rnn_layer1 = tf.keras.layers.LSTM(128, return_sequences=True, stateful=True)(one_hot)
-# rnn_layer2 = tf.keras.layers.LSTM(128, return_sequences=True, stateful=True)(rnn_layer1)
+rnn_layer1 = LSTM(128, return_sequences=True, stateful=True)(one_hot)
+rnn_layer2 = LSTM(128, return_sequences=True, stateful=True)(rnn_layer1)
 # Create the outputs of the model
-hidden_layer = tf.keras.layers.Dense(128, activation="relu")(one_hot)
-outputs = tf.keras.layers.Dense(vocab_size, activation="softmax")(hidden_layer)
+hidden_layer = Dense(128, activation="relu")(one_hot)
+outputs = Dense(vocab_size, activation="softmax")(hidden_layer)
 
 ### Setup the model
 model = tf.keras.Model(inputs=tf_inputs, outputs=outputs)
@@ -136,7 +138,7 @@ first_prediction = outputs[0][0]
 # Reset the states of the RNN states
 model.reset_states()
 
-# Make an other prediction to check the difference
+# Make another prediction to check the difference
 outputs = model.predict(batch_inputs)
 second_prediction = outputs[0][0]
 
