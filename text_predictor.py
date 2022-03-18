@@ -229,5 +229,7 @@ for i in range(size_poetries + 1):
         sequences[b] = argsort[0]
 
 for b in range(64):
-    sentence = "".join([int_to_vocab[i[0]] for i in poetries[b]])
+    sentence: str = "".join([int_to_vocab[i[0]] for i in poetries[b]])
     logger.success(sentence)
+    with open(f"data/{dataset_name}/{out_filename}.txt", "w") as outfile:
+        outfile.write(sentence)
