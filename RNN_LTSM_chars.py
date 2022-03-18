@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import random
 from typing import Generator, Tuple
@@ -248,8 +249,9 @@ for i in range(size_poetries + 1):
         # Select one of the strongest 4 proposals
         sequences[b] = argsort[0]
 
+out_filename: str = f"{datetime.now().strftime('%Y-%m-%d_%H-%M')}.txt"
 for b in range(64):
     sentence: str = "".join([int_to_vocab[i[0]] for i in poetries[b]])
     logger.success(sentence)
-    with open(f"data/{dataset_name}/{out_filename}.txt", "w") as outfile:
+    with open(f"data/{DATA_DIR}/{out_filename}", "w") as outfile:
         outfile.write(sentence)

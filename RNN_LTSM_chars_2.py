@@ -1,4 +1,6 @@
+from datetime import datetime
 import sys
+
 import numpy
 from keras.models import Sequential
 from keras.layers import Dense
@@ -89,6 +91,7 @@ logger.info("Seed:")
 logger.info([int_to_char[value] for value in pattern])
 
 # generate characters
+sequence: str = ""
 for i in range(1000):
 	x = numpy.reshape(pattern, (1, len(pattern), 1))
 	x = x / float(n_vocab)
@@ -96,7 +99,13 @@ for i in range(1000):
 	index = numpy.argmax(prediction)
 	result = int_to_char[index]
 	seq_in = [int_to_char[value] for value in pattern]
-	sys.stdout.write(result)
+	logger.success(result)
 	pattern.append(index)
 	pattern = pattern[1:len(pattern)]
-logger.info("\nDone.")
+	sequence.add(result)
+
+out_filename: str = f"{datetime.now().strftime('%Y-%m-%d_%H-%M')}.txt"
+with open(f"data/{DATA_DIR}/{out_filename}", "w") as outfile:
+	outfile.write(sentence)
+
+logger.success("Done.")
