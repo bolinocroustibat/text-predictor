@@ -1,11 +1,10 @@
 from datetime import datetime
-import typer
-
 from typing import Optional
+
+import typer
 
 
 class CustomLogger:
-
     def log(self, message: str, color: Optional[str] = None) -> None:
         now = datetime.now()
         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
@@ -24,6 +23,6 @@ class CustomLogger:
 
     def debug(self, message: str) -> None:
         self.log(message, "magenta")
-        
+
     def info(self, message: str) -> None:
         self.log(message, "cyan")

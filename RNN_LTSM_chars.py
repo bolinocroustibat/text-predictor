@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import typer
+from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM
 
 from config import DATA_DIR
 from helpers import CustomLogger
@@ -35,8 +35,9 @@ def generate_batches(
     inputs: list, targets: list, seq_len: int, batch_size: int, noise=0
 ) -> Tuple[Generator, Generator]:
     # Size of each chunk
+    # Si le texte d'entraînement fait 20000 caractères, et qu'on entraine à chaque epoch avec 64 batches de data, chaque batch fera 200000//64=310 caractères.
     chunk_size: int = (len(inputs) - 1) // batch_size
-    # Number of sequence per chunk
+    # Number of sequences per chunk
     sequences_per_chunk: int = chunk_size // seq_len
 
     for s in range(0, sequences_per_chunk):
@@ -107,6 +108,8 @@ logger.debug("One hot representation of the letter: {}".format(output[0][0]))
 
 ### Set up the models, create the layers
 
+# On envoie en input 64 batches de phrases de 50 caractères chacune
+
 # Set the input of the model
 tf_inputs = tf.keras.Input(shape=(None,), batch_size=64)
 # Convert each value of the  input into a one encoding vector
@@ -115,12 +118,27 @@ one_hot = OneHot(vocab_size)(tf_inputs)
 rnn_layer1 = LSTM(128, return_sequences=True, stateful=True)(one_hot)
 rnn_layer2 = LSTM(128, return_sequences=True, stateful=True)(rnn_layer1)
 # Create the outputs of the model
-hidden_layer = Dense(128, activation="relu")(one_hot)
+hidden_layer = Dense(128, activation="relu")(rnn_layer2)
 outputs = Dense(vocab_size, activation="softmax")(hidden_layer)
 
 ### Setup the model
 model = tf.keras.Model(inputs=tf_inputs, outputs=outputs)
 
+# Test the shape of the model
+model.summary()
+
+# model2 = Sequential()
+# # Set the input of the model
+# model2.add(tf.keras.Input(shape=(None,), batch_size=64))
+# # Convert each value of the  input into a one encoding vector
+# model2.add(OneHot(vocab_size))
+# # Stack LSTM cells
+# model2.add(LSTM(128, return_sequences=True, stateful=True))
+# model2.add(LSTM(128, return_sequences=True, stateful=True))
+# # Outputs of the model
+# model2.add(Dense(128, activation="relu"))
+# model2.add(Dense(vocab_size, activation="softmax"))
+# model2.summary()
 
 # Start by resetting the cells of the RNN
 model.reset_states()
@@ -129,7 +147,7 @@ model.reset_states()
 batch_inputs, batch_targets = next(
     generate_batches(inputs=inputs, targets=targets, seq_len=50, batch_size=64)
 )
-# logger.debug(f"Shape of the inputs: {batch_inputs.shape}")
+logger.debug(f"Shape of the inputs: {batch_inputs.shape}")
 
 # Make a first prediction
 outputs = model.predict(batch_inputs)
