@@ -1,3 +1,3 @@
-DATA_DIR: str = "shakespeare"
+DATA_DIR: str = "trolls_fr"
 
 EPOCHS: int = 50

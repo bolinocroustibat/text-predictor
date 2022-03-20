@@ -217,8 +217,7 @@ for epoch in range(EPOCHS):  # default was 4000
 
 
 # Save the model
-
-model.save("model_rnn.h5")
+model.save(f"models/{DATA_DIR}/model_rnn_lstm_1.h5")
 
 with open(f"data/{DATA_DIR}/model_rnn_vocab_to_int", "w") as f:
     f.write(json.dumps(vocab_to_int))
