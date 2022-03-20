@@ -1,6 +1,6 @@
-from datetime import datetime
 import json
 import random
+from datetime import datetime
 from typing import Generator, Tuple
 
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import typer
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.models import Sequential
 
-from config import DATA_DIR
+from config import DATA_DIR, EPOCHS
 from helpers import CustomLogger
 
 logger = CustomLogger()
@@ -203,7 +203,7 @@ def predict(inputs):
 
 model.reset_states()
 
-for epoch in range(4000):
+for epoch in range(EPOCHS):  # default was 4000
     for batch_inputs, batch_targets in generate_batches(
         inputs=inputs, targets=targets, seq_len=50, batch_size=64, noise=13
     ):

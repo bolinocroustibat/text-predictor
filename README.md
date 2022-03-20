@@ -39,3 +39,31 @@ v = sys.modules.copy()
 for mod in v:
 ```
 
+
+## To run in the background on a distant server
+Use tmux.
+
+See https://www.howtogeek.com/671422/how-to-use-tmux-on-linux-and-why-its-better-than-screen/
+
+Create a named session:
+```
+tmux new -s session-name
+```
+
+Detach from the session:
+`Ctrl+b+d`
+
+List sessions:
+```
+tmux ls
+```
+
+Attach to last session:
+```
+tmux a
+```
+
+Attach to a session:
+```
+tmux a -t session-name
+```

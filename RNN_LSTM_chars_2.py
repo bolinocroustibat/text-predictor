@@ -1,17 +1,14 @@
-from datetime import datetime
 import sys
+from datetime import datetime
 
 import numpy
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import LSTM
 from keras.callbacks import ModelCheckpoint
+from keras.layers import LSTM, Dense, Dropout
+from keras.models import Sequential
 from keras.utils import np_utils
 
-from config import DATA_DIR
+from config import DATA_DIR, EPOCHS
 from helpers import CustomLogger
-
 
 logger = CustomLogger()
 
@@ -37,10 +34,10 @@ seq_length = 100
 dataX = []
 dataY = []
 for i in range(0, n_chars - seq_length, 1):
-	seq_in = text[i:i + seq_length]
-	seq_out = text[i + seq_length]
-	dataX.append([char_to_int[char] for char in seq_in])
-	dataY.append(char_to_int[seq_out])
+    seq_in = text[i : i + seq_length]
+    seq_out = text[i + seq_length]
+    dataX.append([char_to_int[char] for char in seq_in])
+    dataY.append(char_to_int[seq_out])
 n_patterns = len(dataX)
 logger.info(f"Total patterns: {n_patterns}")
 
@@ -66,46 +63,46 @@ model.add(LSTM(256, input_shape=(X.shape[1], X.shape[2]), return_sequences=True)
 model.add(Dropout(0.2))
 model.add(LSTM(256))
 model.add(Dropout(0.2))
-model.add(Dense(y.shape[1], activation='softmax'))
-model.compile(loss='categorical_crossentropy', optimizer='adam')
+model.add(Dense(y.shape[1], activation="softmax"))
+model.compile(loss="categorical_crossentropy", optimizer="adam")
 
 # display the shape of the model
 model.summary()
 
-# # save the model with its weights
-filepath="weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
-checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
+# save the model with its weights
+filepath = "weights-{epoch:02d}-{loss:.4f}.hdf5"
+checkpoint = ModelCheckpoint(
+    filepath=f"models/{DATA_DIR}/"+filepath, monitor="loss", verbose=1, save_best_only=True, mode="min"
+)
 callbacks_list = [checkpoint]
 
 # fit the model
-model.fit(X, y, epochs=50, batch_size=64, callbacks=callbacks_list)
+model.fit(X, y, epochs=EPOCHS, batch_size=64, callbacks=callbacks_list)
 
 # # load the network weights
 # filename = "weights-improvement-19-1.9435.hdf5"
 # model.load_weights(filename)
 
 # pick a random seed
-start = numpy.random.randint(0, len(dataX)-1)
+start = numpy.random.randint(0, len(dataX) - 1)
 pattern = dataX[start]
 logger.info("Seed:")
 logger.info([int_to_char[value] for value in pattern])
 
 # generate characters
-sequence: str = ""
 for i in range(1000):
-	x = numpy.reshape(pattern, (1, len(pattern), 1))
-	x = x / float(n_vocab)
-	prediction = model.predict(x, verbose=0)
-	index = numpy.argmax(prediction)
-	result = int_to_char[index]
-	seq_in = [int_to_char[value] for value in pattern]
-	logger.success(result)
-	pattern.append(index)
-	pattern = pattern[1:len(pattern)]
-	sequence.add(result)
+    x = numpy.reshape(pattern, (1, len(pattern), 1))
+    x = x / float(n_vocab)
+    prediction = model.predict(x, verbose=0)
+    index = numpy.argmax(prediction)
+    result = int_to_char[index]
+    seq_in = [int_to_char[value] for value in pattern]
+    logger.success(result)
+    pattern.append(index)
+    pattern = pattern[1 : len(pattern)]
 
-out_filename: str = f"{datetime.now().strftime('%Y-%m-%d_%H-%M')}.txt"
-with open(f"data/{DATA_DIR}/{out_filename}", "w") as outfile:
-	outfile.write(sentence)
+    out_filename: str = f"{datetime.now().strftime('%Y-%m-%d_%H-%M')}.txt"
+    with open(f"data/{DATA_DIR}/{out_filename}", "a") as outfile:
+        outfile.write(result)
 
 logger.success("Done.")

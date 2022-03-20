@@ -16,7 +16,7 @@ from keras.layers.recurrent import LSTM
 from keras.models import Sequential
 from keras.utils.data_utils import get_file
 
-from config import DATA_DIR
+from config import DATA_DIR, EPOCHS
 from helpers import CustomLogger
 
 logger = CustomLogger()
@@ -40,7 +40,9 @@ vocab_size, emdedding_size = pretrained_weights.shape
 logger.info(f"Result embedding shape: {pretrained_weights.shape}")
 logger.info("Checking similar words:")
 for word in ["model", "network", "train", "learn"]:
-    most_similar: list =[(similar, dist) for similar, dist in word_model.wv.most_similar(word)[:8]]
+    most_similar: list = [
+        (similar, dist) for similar, dist in word_model.wv.most_similar(word)[:8]
+    ]
     logger.info(f"{word} -> {most_similar}")
 
 
@@ -112,6 +114,6 @@ logger.info("train_y shape:", train_y.shape)
 #     train_x,
 #     train_y,
 #     batch_size=128,
-#     epochs=20,
+#     epochs=EPOCHS, # default is 20
 #     callbacks=[LambdaCallback(on_epoch_end=on_epoch_end)],
 # )
